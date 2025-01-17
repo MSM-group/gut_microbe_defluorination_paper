@@ -1,0 +1,47 @@
+Table SX. Genome neighborhood context of 55 bioinformatically-identified HADs including 9 which were experimentally verified in this study *Average occurrence of the PFAM within 15 the genome neighborhood corresponding to 7 genes on each side of the central HAD gene query,,,,
+ID,PFAM,Number of hits (for 55 HAD neighborhoods),Description,Frequency*
+1,no pfam assigned,169,NA/hypothetical proteins,1.352
+2,PF13419,49,Haloacid dehalogenase-like hydrolase,0.392
+3,PF00005,14,ABC transporter,0.112
+4,PF12833,11,Helix-turn-helix domain,0.088
+5,PF01380,9,SIS domain,0.072
+6,PF00528,8,Binding-protein-dependent transport system inner membrane component,0.064
+7,PF01019,8,Gamma-glutamyltranspeptidase,0.064
+8,PF01261,8,Xylose isomerase-like TIM barrel,0.064
+9,PF01381,8,Helix-turn-helix,0.064
+10,PF00474,7,Sodium:solute symporter family,0.056
+11,PF00480,6,ROK family,0.048
+12,PF00583,6,Acetyltransferase (GNAT) family,0.048
+13,PF00701,6,Dihydrodipicolinate synthetase family,0.048
+14,PF03180,6,NlpA lipoprotein,0.048
+15,PF04203,6,Sortase domain,0.048
+16,PF00248,5,Aldo/keto reductase family,0.04
+17,PF04131,5,Putative N-acetylmannosamine-6-phosphate epimerase,0.04
+18,PF04464,5,CDP-Glycerol:Poly(glycerophosphate) glycerophosphotransferase,0.04
+19,PF09587,5,Bacterial capsule synthesis protein PGA_cap,0.04
+20,PF00072,4,Response regulator receiver domain,0.032
+21,PF00117,4,Glutamine amidotransferase class-I,0.032
+22,PF00535,4,Glycosyl transferase family 2,0.032
+23,PF00664,4,ABC transporter transmembrane region,0.032
+24,PF00860,4,Permease family,0.032
+25,PF01022,4,"Bacterial regulatory protein, arsR family",0.032
+26,PF01451,4,Low molecular weight phosphotyrosine protein phosphatase,0.032
+27,PF01743,4,Poly A polymerase head domain,0.032
+28,PF02378,4,"Phosphotransferase system, EIIC",0.032
+29,PF02417,4,Chromate transporter,0.032
+30,PF02436,4,Conserved carboxylase domain,0.032
+31,PF02518,4,"Histidine kinase-, DNA gyrase B-, and HSP90-like ATPase",0.032
+32,PF02687,4,FtsX-like permease family,0.032
+33,PF03358,4,NADPH-dependent FMN reductase,0.032
+34,PF03466,4,LysR substrate binding domain,0.032
+35,PF06962,4,Putative rRNA methylase,0.032
+36,PF08028,4,"Acyl-CoA dehydrogenase, C-terminal domain",0.032
+37,PF08240,4,Alcohol dehydrogenase GroES-like domain,0.032
+38,PF08282,4,haloacid dehalogenase-like hydrolase,0.032
+39,PF08840,4,BAAT / Acyl-CoA thioester hydrolase C terminal,0.032
+40,PF09359,4,VTC domain,0.032
+41,PF13192,4,Thioredoxin domain,0.032
+42,PF13302,4,Acetyltransferase (GNAT) domain,0.032
+43,PF13338,4,"Transcriptional regulator, AbiEi antitoxin",0.032
+44,PF14262,4,Carbohydrate-binding domain-containing protein Cthe_2159,0.032
+45,PF16316,4,Domain of unknown function (DUF4956),0.032
