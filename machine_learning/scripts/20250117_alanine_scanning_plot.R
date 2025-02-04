@@ -3,24 +3,47 @@ pacman::p_load("tidyverse", "readxl", "ggpubr")
 
 # Read in the protein normalized data
 dat <- read_excel("data/Fluoride_concentrations+normalized_activities.xlsx",
-                  range = c("C131:N152")) %>%
+                  range = c("C135:N156"), sheet = "Data normalized Defluorination") %>%
       as.matrix(byrow = T) %>%
-      as.vector() %>%
+      t() %>%
+      c() %>%
       na.omit()
 dat
+attr(dat, "na.action") <- NULL
+attr(dat, "class") <- NULL
+
+# Read in the standard deviation
+stdev <- read_excel("data/Fluoride_concentrations+normalized_activities.xlsx",
+                  range = c("P135:AA156"), sheet = "Data normalized Defluorination") %>%
+  as.matrix(byrow = T) %>%
+  t() %>%
+  c() %>%
+  na.omit()
+stdev
+attr(stdev, "na.action") <- NULL
+attr(stdev, "class") <- NULL
+
 
 # Read in the template
 temp1 <- read_excel("data/template_raw.xlsx", col_names = F) %>%
   janitor::clean_names() %>%
   as.matrix(byrow = T) %>%
   as.vector() %>%
-  na.omit()
+  na.omit() 
+
+
+attr(temp1, "na.action") <- NULL
+attr(temp1, "class") <- NULL
 temp1
+rawdf <-  bind_cols(label = temp1, 
+                    value = dat,
+                    stdev = stdev)
+wt <- rawdf$value[rawdf$label == "WT"]  
 
 # Assign the values to the template
-specdf <- bind_cols(label = temp1, 
-                 delta = dat) %>%
-  dplyr::filter(!label %in% c("WT", "P20", "P21", "P22", "P23", "P24")) %>%
+specdf <- rawdf %>%
+  dplyr::mutate(delta = value - wt) %>%
+  dplyr::filter(!label %in% c("P20", "P21", "P22", "P23", "P24")) %>%
   dplyr::mutate(position_index = as.numeric(gsub('[[:alpha:]]', "", substr(label, 3, 5)))) %>%
   dplyr::mutate(position_from = substr(label, 2, 2)) %>%
   dplyr::mutate(position_to = substr(label, nchar(label), nchar(label))) %>%
@@ -33,14 +56,26 @@ specdf <- bind_cols(label = temp1,
                                             position_index %in% 110:150 ~ 4,
                                             position_index %in% 150:196 ~ 5,
                                             position_index %in% 197:238 ~ 6,
-                                            TRUE ~ NA)) %>%
-  dplyr::arrange(desc(delta))
+                                            TRUE ~ NA))# %>%
+ # dplyr::arrange(delta)
+
 specdf$label <- factor(specdf$label, levels = as.character(specdf$label))
+
+specdf$delta
+specdf$stdev
 
 # Make a barplot
 pdf("output/alanine_variant_activity_barplot.pdf", height= 40)
-ggplot(data = specdf, aes(x = label, y = delta-1)) +
+ggplot(data = specdf, aes(x = label, y = delta)) +
   geom_bar(stat = "identity") +
+  theme_pubr() +
+  coord_flip()
+dev.off()
+
+pdf("output/alanine_variant_activity_barplot_with_errorbars.pdf", height= 40)
+ggplot(data = specdf, aes(x = label, y = delta)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(data = specdf, aes(ymin = delta-stdev, ymax=delta+stdev)) +
   theme_pubr() +
   coord_flip()
 dev.off()
