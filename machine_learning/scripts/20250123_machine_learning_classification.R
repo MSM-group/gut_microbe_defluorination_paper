@@ -62,8 +62,6 @@ neg <- readAAStringSet("data/neg_defluorinases_deduplicated.fasta")
 val <- readAAStringSet("data/experimental_validation_set.fasta") 
 comb <- AlignSeqs(AAStringSet(c(pos, neg, mutlib, val)))
 names(comb) <- c(names(pos), names(neg), names(mutlib), names(val))
-
-BrowseSeqs(comb)
 writeXStringSet(comb, "data/mutlib_all_seqs_aligned.fasta")
 
 # Load alignment file
@@ -103,7 +101,6 @@ rawdat <- reg_df %>%
 colnames(rawdat) <- paste0(colnames(rawdat), "_", as.character(rawdat[1,]))
 colnames(rawdat)[grepl("truth", colnames(rawdat))] <- "truth"
 colnames(rawdat)[grepl("nams", colnames(rawdat))] <- "nams"
-write_csv(rawdat, 'data/20250123_defluorinases_entire_alignment_for_classification.csv')
 
 # Remove variables with nonzero variance 
 nozdat <- caret::nearZeroVar(rawdat, saveMetrics = TRUE, uniqueCut = 1)
@@ -150,23 +147,52 @@ rf_grid <- expand.grid(mtry = mtrys,
                        splitrule = c("gini", "extratrees"),
                        min.node.size = 1)
 
-# Train a machine learning model
+# Weight the classes by their importance
+
+wp118<- 1/length(grep("WP_118709078", rownames(x_train)))
+wp118
+wp178 <- 1/length(grep("WP_178618037", rownames(x_train)))
+wp178
+case_wts <- case_when(grepl("WP_118709078", rownames(x_train)) ~ wp118,
+                       grepl("WP_178618037", rownames(x_train)) ~ wp178,
+                           TRUE ~ 1)
+length(case_wts)
+nrow(df_train)
+# Train a model
 rf <- train(
   x = df_train,
   y = y_train,
   method = "ranger",
   tuneGrid = rf_grid,
-  trControl = trainControl(method = "repeatedcv", number = 10, # this is how many folds
-                           repeats = 3, # increase this to 3 when you run the code 
+  trControl = trainControl(method = "repeatedcv", number = 10, 
+                           repeats = 3,
                            verboseIter = T, classProbs = T,
                            savePredictions = "final"),
   verbose = TRUE,
+  case.weights = case_wts,
   importance = "permutation")
+rf$bestTune
+
+
+rf_full <- ranger(as.factor(y_train) ~., data = form_train, num.trees = 1000, 
+                            splitrule = "gini",
+                            case.weights = case_wts,
+                            mtry = 15, min.node.size = 1,
+                            importance = "permutation", probability = TRUE)
+
+
+rf_pred <- predict(rf_full, data = form_test)
+mod_train_pred <- as.factor(ifelse(rf_pred$predictions[,1] >= 0.5, "defluor", "nondefluor"))
+mod_train_pred
+cm_rf <- confusionMatrix(mod_train_pred, as.factor(dat_test$truth))
+see_preds <- bind_cols(rownames(dat_test), y_test, mod_train_pred, rf_pred$predictions)
+see_preds
+
 
 # Training set accuracy
 getTrainPerf(rf) # Training set accuracy 98 implies overfitting
 rf$finalModel$prediction.error # out-of-bag error 2%
-saveRDS(rf, "data/20250123_classification_random_forest.rds")
+saveRDS(rf, "data/20250209_classification_random_forest.rds")
 
 # Plot of variable importance
 rf_imp <- varImp(rf, scale = FALSE, 
@@ -176,7 +202,7 @@ rf_imp
 rf_imp
 
 pdf("data/importance_plot_full_length_classification_top20.pdf", width = 5, height = 3)
-rf1 <- ggplot(rf_imp, top = 20) + 
+rf1 <- ggplot(rf_imp, top = 10) + 
   xlab("") +
   theme_classic()
 rf1
@@ -188,7 +214,7 @@ table(as.numeric(gsub("residue", "", word(rownames(rf_imp$importance), sep = "_"
 55/(154 + 80) # 24%
 rf_imp
 
-rf2 <- ggplot(rf_imp, top = 20) + 
+rf2 <- ggplot(rf_imp, top = 10) + 
   xlab("") +
   theme_classic() 
 rf2
@@ -200,6 +226,7 @@ rf_roc_train <- pROC::roc(response = ifelse(rf$pred$obs == "nondefluor", 0, 1),
 # Testing set
 rf_pred <- predict(rf, newdata = form_test)
 rf_pred
+
 see_preds <- bind_cols(rownames(dat_test), form_test$y_test, rf_pred)
 write_csv(see_preds, "output/classification_model_predictions.csv")
 cm_rf <- confusionMatrix(rf_pred, as.factor(y_test))
@@ -213,7 +240,6 @@ rf_roc <- pROC::roc(response = ifelse(rf$pred$obs == "nondefluor", 0, 1),
                     predictor = ifelse(rf$pred$pred == "nondefluor", 0, 1),
                     plot = TRUE)
 rf_roc
-cm_rf$table
 
 # AUC
 plot(rf_roc, type = "s", 
