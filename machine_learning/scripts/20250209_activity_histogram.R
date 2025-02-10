@@ -57,17 +57,19 @@ ggplot(rawdf, aes(x = log10(value))) +
   geom_histogram(binwidth = 0.1, fill = "gray80") +
   theme_pubr() +
   geom_vline(aes(xintercept = log10(830.7176)), size = 2, color = "red", linetype = "dashed") +
-  geom_vline(aes(xintercept = log10(153.23620)), size = 2, color = "blue", linetype = "dashed")
+  geom_vline(aes(xintercept = 2.322878), size = 2, color = "blue", linetype = "dashed")
 dev.off()
 
 dip_result <- dip(log10(rawdf$value), full.result = TRUE)
 dip_test <- dip.test(log10(rawdf$value))
-fortest2 <- log10(rawdf$value)[(log10(rawdf$value)) > 2]
-fortest2
-rawdens <- density(fortest2)
-min_density_point <- rawdens$x[which.min(rawdens$x)]
-min_density_point
+kmeans_result <- kmeans(log10(rawdf$value), centers = 2)
 
+# Find the centers (means) of the two clusters using k-means
+cluster_centers <- sort(kmeans_result$centers)
+# The valley would be roughly in the middle of the two cluster centers
+valley_point <- mean(cluster_centers)
+valley_point # 2.322878
+ 
 ggplot(rawdf, aes(x = log10(value))) +
   geom_freqpoly() +
   theme_pubr() 
@@ -75,7 +77,7 @@ ggplot(rawdf, aes(x = log10(value))) +
 ggplot(rawdf, aes(x = log10(value))) +
   geom_density() +
   theme_pubr() 
-dev.off()
+
 
 # Calculate the activity
 wt <- mean(rawdf$value[rawdf$label == "WT"])

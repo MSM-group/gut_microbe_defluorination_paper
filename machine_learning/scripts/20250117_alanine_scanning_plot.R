@@ -56,9 +56,7 @@ specdf <- rawdf %>%
                                             position_index %in% 110:150 ~ 4,
                                             position_index %in% 150:196 ~ 5,
                                             position_index %in% 197:238 ~ 6,
-                                            TRUE ~ NA))# %>%
- # dplyr::arrange(delta)
-
+                                            TRUE ~ NA))
 specdf$label <- factor(specdf$label, levels = as.character(specdf$label))
 
 specdf$delta
