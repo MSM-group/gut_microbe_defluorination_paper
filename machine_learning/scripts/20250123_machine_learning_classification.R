@@ -24,13 +24,13 @@ attr(temp1, "na.action") <- NULL
 attr(temp1, "class") <- NULL
 temp1
 
-specdf <- bind_cols(label = temp1, activity = dat) %>%
+specdf <- bind_cols(label = temp1, activity = log10(dat)) %>%
   dplyr::filter(!label %in% c("WT", "P20", "P21", "P22", "P23", "P24")) %>%
   dplyr::mutate(aa = substr(label, 2, 2)) %>%
   arrange(desc(activity)) %>%
   dplyr::filter(aa != "O") %>%
-  dplyr::mutate(truth = case_when(activity >= 1.0 ~ "defluor", 
-                                  activity <= 0.3 ~ "nondefluor"))  %>%
+  dplyr::mutate(truth = case_when(activity >= 2.322878 ~ "defluor",   #2.322878 is the inflection point
+                                  activity <= 2.322878 ~ "nondefluor"))  %>%
   dplyr::filter(complete.cases(.)) %>%
   dplyr::mutate(fd_uname = paste0("WP_178618037_1_", label)) %>%
   dplyr::mutate(fd_uname = gsub("_g", "_", fd_uname))
@@ -38,10 +38,11 @@ specdf <- bind_cols(label = temp1, activity = dat) %>%
 # Read in sequences
 m8037 <- read_excel("data/Batch353c_Robinson_m8037_T7Express.xlsx") %>%
   dplyr::left_join(., specdf, by = c("fd_uname")) %>%
-  dplyr::mutate(truth = case_when(activity >= 1.0 ~ "defluor", 
-                                  activity <= 0.3 ~ "nondefluor"))  
+  dplyr::mutate(truth = case_when(activity >= 2.322878 ~ "defluor",   #2.322878 is the inflection point
+                                  activity <= 2.322878 ~ "nondefluor")) 
 m9078 <- read_excel("data/Batch353c_Robinson_m9078_T7Express.xlsx") %>%
   dplyr::mutate(truth = "nondefluor")
+
 comball <- m8037 %>%
   bind_rows(m9078) %>%
   janitor::clean_names() %>%
@@ -61,9 +62,8 @@ neg <- readAAStringSet("data/neg_defluorinases_deduplicated.fasta")
 # Validation set
 val <- readAAStringSet("data/experimental_validation_set.fasta") 
 comb <- AlignSeqs(AAStringSet(c(pos, neg, mutlib, val)))
+width(comb)
 names(comb) <- c(names(pos), names(neg), names(mutlib), names(val))
-
-BrowseSeqs(comb)
 writeXStringSet(comb, "data/mutlib_all_seqs_aligned.fasta")
 
 # Load alignment file
@@ -95,6 +95,7 @@ reg_df <- merg_split %>%
                           comball$truth[!is.na(comball$truth)],
                           "defluor", rep("nondefluor", 4)))
 table(reg_df$truth)
+length(pos) + length(neg)
 
 # Remove columns that the machine learning model should not see, e.g., nams, truth
 rawdat <- reg_df %>%
@@ -103,7 +104,6 @@ rawdat <- reg_df %>%
 colnames(rawdat) <- paste0(colnames(rawdat), "_", as.character(rawdat[1,]))
 colnames(rawdat)[grepl("truth", colnames(rawdat))] <- "truth"
 colnames(rawdat)[grepl("nams", colnames(rawdat))] <- "nams"
-write_csv(rawdat, 'data/20250123_defluorinases_entire_alignment_for_classification.csv')
 
 # Remove variables with nonzero variance 
 nozdat <- caret::nearZeroVar(rawdat, saveMetrics = TRUE, uniqueCut = 1)
@@ -116,6 +116,9 @@ dat <- rawdat  %>%
 # Check for duplicates
 dat <- dat[!duplicated(dat),] 
 colnames(dat)
+
+dat$nams <- rownames(dat)
+write_csv(dat, "data/20250209_full_set_452_training_seqs.csv")
 
 # Set random seed 
 set.seed(1234) 
@@ -150,23 +153,54 @@ rf_grid <- expand.grid(mtry = mtrys,
                        splitrule = c("gini", "extratrees"),
                        min.node.size = 1)
 
-# Train a machine learning model
+# Weight the classes by their importance
+wp118 <- 1/length(grep("WP_118709078", rownames(x_train)))
+wp118 * length(grep("WP_118709078", rownames(x_train))) # weight corresponds to 1
+wp178 <- 1/length(grep("WP_178618037", rownames(x_train)))
+wp178 * length(grep("WP_178618037", rownames(x_train))) # weight corresponds to 1
+case_wts <- case_when(grepl("WP_118709078", rownames(x_train)) ~ wp118,
+                       grepl("WP_178618037", rownames(x_train)) ~ wp178,
+                           TRUE ~ 1)
+bind_cols(case_wts, rownames(x_train))
+length(case_wts)
+
+
+# Train a model
 rf <- train(
   x = df_train,
   y = y_train,
   method = "ranger",
   tuneGrid = rf_grid,
-  trControl = trainControl(method = "repeatedcv", number = 10, # this is how many folds
-                           repeats = 3, # increase this to 3 when you run the code 
+  trControl = trainControl(method = "repeatedcv", number = 10, 
+                           repeats = 3,
                            verboseIter = T, classProbs = T,
                            savePredictions = "final"),
   verbose = TRUE,
   importance = "permutation")
+rf$bestTune
+
+# Best model
+rf_full <- ranger(as.factor(y_train) ~., data = form_train, num.trees = 1000, 
+                            splitrule = "gini",
+                            case.weights = case_wts,
+                            mtry = 15, min.node.size = 1,
+                            importance = "permutation", probability = TRUE)
 
 # Training set accuracy
-getTrainPerf(rf) # Training set accuracy 98 implies overfitting
-rf$finalModel$prediction.error # out-of-bag error 2%
-saveRDS(rf, "data/20250123_classification_random_forest.rds")
+rf_full$predictions
+rf_full$prediction.error # out-of-bag error
+mod_train_pred <- as.factor(ifelse(rf_full$predictions[,1] >= 0.5, "defluor", "nondefluor"))
+confusionMatrix(mod_train_pred, as.factor(dat_train$truth))
+saveRDS(rf_full, "data/20250209_classification_random_forest.rds")
+
+rf_pred <- predict(rf_full, data = form_test)
+mod_test_pred <- as.factor(ifelse(rf_pred$predictions[,1] >= 0.5, "defluor", "nondefluor"))
+mod_test_pred
+cm_rf <- confusionMatrix(mod_test_pred, as.factor(dat_test$truth))
+cm_rf
+
+see_preds <- bind_cols(rownames(dat_test), y_test, mod_test_pred, rf_pred$predictions)
+see_preds
 
 # Plot of variable importance
 rf_imp <- varImp(rf, scale = FALSE, 
@@ -175,8 +209,8 @@ rf_imp <- varImp(rf, scale = FALSE,
 rf_imp
 rf_imp
 
-pdf("data/importance_plot_full_length_classification_top20.pdf", width = 5, height = 3)
-rf1 <- ggplot(rf_imp, top = 20) + 
+pdf("data/importance_plot_full_length_classification_top10.pdf", width = 5, height = 3)
+rf1 <- ggplot(rf_imp, top = 10) + 
   xlab("") +
   theme_classic()
 rf1
@@ -188,7 +222,7 @@ table(as.numeric(gsub("residue", "", word(rownames(rf_imp$importance), sep = "_"
 55/(154 + 80) # 24%
 rf_imp
 
-rf2 <- ggplot(rf_imp, top = 20) + 
+rf2 <- ggplot(rf_imp, top = 10) + 
   xlab("") +
   theme_classic() 
 rf2
@@ -200,6 +234,7 @@ rf_roc_train <- pROC::roc(response = ifelse(rf$pred$obs == "nondefluor", 0, 1),
 # Testing set
 rf_pred <- predict(rf, newdata = form_test)
 rf_pred
+
 see_preds <- bind_cols(rownames(dat_test), form_test$y_test, rf_pred)
 write_csv(see_preds, "output/classification_model_predictions.csv")
 cm_rf <- confusionMatrix(rf_pred, as.factor(y_test))
@@ -213,7 +248,6 @@ rf_roc <- pROC::roc(response = ifelse(rf$pred$obs == "nondefluor", 0, 1),
                     predictor = ifelse(rf$pred$pred == "nondefluor", 0, 1),
                     plot = TRUE)
 rf_roc
-cm_rf$table
 
 # AUC
 plot(rf_roc, type = "s", 
