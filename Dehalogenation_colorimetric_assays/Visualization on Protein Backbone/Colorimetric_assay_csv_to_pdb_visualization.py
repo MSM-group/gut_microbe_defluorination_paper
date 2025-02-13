@@ -2,9 +2,7 @@ import csv
 
 def normalize_csv_values(csv_file):
     """
-    Reads and normalizes the values from the CSV file.
-    Each value is normalized by dividing by the maximum value in the CSV
-    and then multiplying by 99.99.
+    Reads and normalizes the values from the CSV file using the updated normalization formula.
     Returns a dictionary mapping residue indices (1-based) to normalized values.
     """
     all_values = []
@@ -22,8 +20,12 @@ def normalize_csv_values(csv_file):
                     row_values.append(0.0)  # Handle non-numeric values
             all_values.append(row_values)
 
-    # Find the maximum value
-    max_value = max(max(row) for row in all_values if row) if all_values else 1
+    if not all_values:
+        return {}
+
+    # Find the minimum and maximum values
+    min_value = min(min(row) for row in all_values if row)
+    max_value = max(max(row) for row in all_values if row)
 
     # Normalize each value and assign to sequential residue indices starting from residue 2
     current_index = 2  # Start from residue 2
@@ -31,7 +33,8 @@ def normalize_csv_values(csv_file):
 
     for row in all_values:
         for value in row:
-            normalized_values[current_index] = f"{(value / max_value) * 99.99:05.2f}"
+            normalized_value = ((value - min_value) / (max_value - min_value)) * 99.99 if (max_value - min_value) != 0 else 0
+            normalized_values[current_index] = f"{normalized_value:05.2f}"
             current_index += 1
 
     return normalized_values
@@ -49,7 +52,7 @@ def modify_pdb_file_by_residue(input_file, output_file, normalized_csv):
                     residue_index = int(line[22:26].strip())
                     # Find the corresponding normalized value for the residue
                     if residue_index in normalized_csv:
-                        value_for_residue = normalized_csv[residue_index]  # Use the value for the residue index
+                        value_for_residue = normalized_csv[residue_index]
                         # Inject the normalized value into the B-factor field
                         line = line[:60] + f"{value_for_residue:>6}" + line[66:]
                 except (ValueError, IndexError):
@@ -58,9 +61,9 @@ def modify_pdb_file_by_residue(input_file, output_file, normalized_csv):
 
 if __name__ == "__main__":
     # File paths
-    csv_file = r"\\eawag\userdata\felderfl\My Documents\GitHub\gut_microbe_defluorination_paper\Dehalogenation_colorimetric_assays\Visualization on Protein Backbone\Defluorination_normtoWT.csv"
+    csv_file = r"\\eawag\userdata\felderfl\My Documents\GitHub\gut_microbe_defluorination_paper\Dehalogenation_colorimetric_assays\Visualization on Protein Backbone\Dechlorination-Defluorination.csv"
     pdb_file = r"\\eawag\userdata\felderfl\My Documents\GitHub\gut_microbe_defluorination_paper\Dehalogenation_colorimetric_assays\Visualization on Protein Backbone\WP_1786180371.pdb"
-    output_pdb_file = r"\\eawag\userdata\felderfl\My Documents\GitHub\gut_microbe_defluorination_paper\Dehalogenation_colorimetric_assays\Visualization on Protein Backbone\WP_1786180371_modified.pdb"
+    output_pdb_file = r"\\eawag\userdata\felderfl\My Documents\GitHub\gut_microbe_defluorination_paper\Dehalogenation_colorimetric_assays\Visualization on Protein Backbone\WP_1786180371_Dechlorination-Defluorination.pdb"
 
     # Normalize values from CSV
     normalized_csv = normalize_csv_values(csv_file)
