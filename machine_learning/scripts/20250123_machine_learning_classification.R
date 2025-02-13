@@ -38,8 +38,8 @@ specdf <- bind_cols(label = temp1, activity = log10(dat)) %>%
 # Read in sequences
 m8037 <- read_excel("data/Batch353c_Robinson_m8037_T7Express.xlsx") %>%
   dplyr::left_join(., specdf, by = c("fd_uname")) %>%
-  dplyr::mutate(truth = case_when(activity >= 1.0 ~ "defluor", 
-                                  activity <= 0.3 ~ "nondefluor"))  
+  dplyr::mutate(truth = case_when(activity >= 2.322878 ~ "defluor",   #2.322878 is the inflection point
+                                  activity <= 2.322878 ~ "nondefluor")) 
 m9078 <- read_excel("data/Batch353c_Robinson_m9078_T7Express.xlsx") %>%
   dplyr::mutate(truth = "nondefluor")
 
@@ -95,6 +95,7 @@ reg_df <- merg_split %>%
                           comball$truth[!is.na(comball$truth)],
                           "defluor", rep("nondefluor", 4)))
 table(reg_df$truth)
+length(pos) + length(neg)
 
 # Remove columns that the machine learning model should not see, e.g., nams, truth
 rawdat <- reg_df %>%

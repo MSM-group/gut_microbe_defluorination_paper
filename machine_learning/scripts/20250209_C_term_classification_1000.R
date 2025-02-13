@@ -1,6 +1,6 @@
 # Read in the packages
-pacman::p_load("tidyverse", "readxl", "ggpubr", "ranger", 
-               "doParallel", "permute", "coin")
+pacman::p_load("tidyverse", "readxl", "ggpubr", "ranger", "Biostrings",
+               "doParallel", "permute", "coin", "DECIPHER", "reshape2")
 
 # Read in the dataset
 dat <- read_csv("data/20250209_full_set_452_training_seqs.csv")
@@ -47,7 +47,6 @@ train_and_extract_features <- function(seed) {
                         grepl("WP_178618037", dat_train$nams) ~ wp178,
                         TRUE ~ 1)
   
-
   # Train the Ranger model
   rf_full <- ranger(as.factor(y_train) ~., data = form_train, num.trees = 1000, 
                     splitrule = "gini",
@@ -90,20 +89,14 @@ combined_df <- bind_rows(all_top_features_rf, .id = "iteration")
 combined_df_rf <- combined_df %>%
   dplyr::select(1:5) %>%
   dplyr::filter(!is.na(aa)) %>%
-  dplyr::filter(aa!= ".") %>%
-  dplyr::filter(rank %in% c(1:20))
-# combined_df_stats <- combined_df_rf %>%
-#   group_by(feature) %>%
-#   dplyr::summarise(mean = mean(importance),
-#                    sd = sd(importance))
-
+  dplyr::filter(aa!= ".")
 
 # Write the prediction results to file
 combined_preds <- combined_df %>%
   dplyr::select(1, 6:9) %>%
   dplyr::filter(!is.na(nams))
 combined_preds
-# write_csv(combined_preds, "output/20250209_1000_classification_predictions.csv")
+write_csv(combined_preds, "output/20250209_1000_classification_predictions.csv")
 
 # Barplot of important AAs
 ggplot(combined_df_rf) +
@@ -119,14 +112,14 @@ merg_split <- wpdf %>%
   dplyr::filter(value != "")
 nrow(merg_split)
 
+# Distribution background
 ggplot(merg_split) +
   geom_bar(aes(value)) +
   theme_pubr()
 
-
-# Calculate proportions
-combined_df_rf
-
+# Step 2: Simulate the binary outcomes (1 = important, 0 = not important) based on observed proportions
+set.seed(123)  # For reproducibility
+n_permutations <- 10000
 amino_acids <- sort(c(unique(combined_df_rf$aa), "C"))[unique(combined_df_rf$aa) != "."] # Example amino acid names
 amino_acids
 observed_prop_raw <- data.frame(table(combined_df_rf$aa)/length(combined_df_rf$aa))
@@ -140,18 +133,15 @@ observed_proportions <- observed_proportions[order(names(observed_proportions))]
 
 n_total <- table(merg_split$value)  # Total number of occurrences of each amino acid
 p_background <- c(table(merg_split$value)/width(wp178))  # Expected proportion of important amino acids (background)
-p_background
-n_total <- table(merg_split$value)  # Total number of occurrences of each amino acid
-p_background <- c(table(merg_split$value)/width(wp178))  # Expected proportion of important amino acids (background)
 p_background_df <- data.frame(Var1 = names(p_background), p_background)
-
+p_background_df
 df2 <-  observed_proportions_long %>%
   dplyr::left_join(p_background_df, by = "Var1") %>%
   reshape2::melt() %>%
   dplyr::mutate(source = ifelse(variable == "Freq", "background", "important (random forest)"))
 df2$variable                  
 
-pdf("output/20250209_underlying_amino_acid_distribution.pdf", height = 4, width = 6)
+pdf("output/20250209_underlying_amino_acid_distribution_Cterm.pdf")
 ggplot(df2, aes(x = Var1, y = value, fill = source)) +
   geom_bar(stat = "identity", position = "dodge") +
   theme_pubr() +
@@ -163,6 +153,7 @@ dev.off()
 
 # Create dataframe
 data <- data.frame(AminoAcid = amino_acids, Observed_Prop = observed_proportions, Expected_Prop = c(p_background))
+
 
 # Set seed for reproducibility
 set.seed(123)
@@ -187,11 +178,12 @@ data$p_value <- p_values
 
 # Display results
 print(data)
+data
 
 # Identify significant amino acids (p < 0.05)
 significant_aa <- data[data$p_value < 0.05, ]
 print("Significantly different amino acids:")
-print(significant_aa)
+print(significant_aa) # none are significant
 
 
 ## Make a box plot to show there is no significant difference between the amino acids which were important 

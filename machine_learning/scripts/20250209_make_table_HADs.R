@@ -1,6 +1,6 @@
 # Read in the packages
-pacman::p_load("tidyverse", "readxl", "ggpubr", 
-               "doParallel", "permute", "coin")
+pacman::p_load("tidyverse", "readxl", "ggpubr", "caret",
+               "doParallel", "permute", "coin", "viridis")
 
 # Make a table
 maketab <- read_csv("output/20250209_1000_classification_predictions.csv") %>%
@@ -32,18 +32,28 @@ summtab <- maketab_P %>%
   )
 maketab_P$predicted_defluor
 
-pdf("output/20250209_ML_predictions_P2025.pdf", width = 3, height = 3)
+pdf("output/supplemental_figures_final/validation_HAD_boxplot.pdf", width = 3, height = 3)
 ggplot(maketab_P, aes(x = proteins, y = predicted_defluor, fill = truth, color = truth)) +
   geom_boxplot(outlier.shape = NA, alpha = 0.2) +
-  #geom_hline(aes(yintercept = 0.5), "dashed") +
- # geom_jitter(width = 0.20) +
-  #geom_errorbar(data = summtab, aes(x = nams, ymin = mean_value - sd_value, ymax = mean_value + sd_value)) +
+  geom_hline(aes(yintercept = 0.5), linetype = "dashed") +
+  scale_color_manual(values = c("goldenrod", "gray80", "gray80", "gray80", "gray80")) +
+  scale_fill_manual(values = c("goldenrod", "gray80", "gray80", "gray80", "gray80")) +
   theme_pubr() +
-#  theme(axis.text.x = element_text(angle = 45, vjust = -0.0005)) +
   ylab("Defluorination probability") +
-  xlab("Validation set HADs")
+  xlab("Validation set HADs") +
+  theme(legend.title = element_blank())
 dev.off()
 
-
+pdf("output/supplemental_figures_final/validation_HAD_densityplot.pdf", width = 5, height = 3)
+ggplot(maketab_P, aes(x = predicted_defluor, fill = proteins)) +
+  geom_density(alpha = 0.7) +
+  theme_pubr() +
+  scale_color_manual(values = c("goldenrod", "orchid1", "skyblue2", "palegreen2", "#FB9A99")) +
+  scale_fill_manual(values = c("goldenrod", "orchid1", "skyblue2", "palegreen2", "#FB9A99")) +
+  ylab("Density") +
+  xlab("Defluorination probability") +
+  theme(legend.title = element_blank())
+dev.off()
 
 write_csv(summtab, "output/scores_for_5_predicted_HADs.csv")
+
