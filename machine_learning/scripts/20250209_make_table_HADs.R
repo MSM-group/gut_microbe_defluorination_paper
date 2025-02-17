@@ -1,5 +1,5 @@
 # Read in the packages
-pacman::p_load("tidyverse", "readxl", "ggpubr", "caret",
+pacman::p_load("tidyverse", "readxl", "ggpubr", "caret", "patchwork",
                "doParallel", "permute", "coin", "viridis")
 
 # Make a table
@@ -32,20 +32,21 @@ summtab <- maketab_P %>%
   )
 maketab_P$predicted_defluor
 
-pdf("output/supplemental_figures_final/validation_HAD_boxplot.pdf", width = 3, height = 3)
-ggplot(maketab_P, aes(x = proteins, y = predicted_defluor, fill = truth, color = truth)) +
-  geom_boxplot(outlier.shape = NA, alpha = 0.2) +
-  geom_hline(aes(yintercept = 0.5), linetype = "dashed") +
-  scale_color_manual(values = c("goldenrod", "gray80", "gray80", "gray80", "gray80")) +
-  scale_fill_manual(values = c("goldenrod", "gray80", "gray80", "gray80", "gray80")) +
+pdf("output/revision_figures_final/validation_HAD_boxplot.pdf", width = 4, height = 2)
+p1<-ggplot(maketab_P, aes(x = proteins, y = predicted_defluor, fill = truth, color = truth)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.6) +
+  geom_hline(aes(yintercept = 0.5), linetype = "dashed", linewidth = 1) +
+  scale_color_manual(values = c("goldenrod", "gray60", "gray60", "gray60", "gray60")) +
+  scale_fill_manual(values = c("goldenrod", "gray60", "gray60", "gray60", "gray60")) +
   theme_pubr() +
   ylab("Defluorination probability") +
   xlab("Validation set HADs") +
   theme(legend.title = element_blank())
+p1
 dev.off()
 
-pdf("output/supplemental_figures_final/validation_HAD_densityplot.pdf", width = 5, height = 3)
-ggplot(maketab_P, aes(x = predicted_defluor, fill = proteins)) +
+pdf("output/revision_figures_final/validation_HAD_densityplot.pdf", width = 4, height = 2)
+p2 <- ggplot(maketab_P, aes(x = predicted_defluor, fill = proteins)) +
   geom_density(alpha = 0.7) +
   theme_pubr() +
   scale_color_manual(values = c("goldenrod", "orchid1", "skyblue2", "palegreen2", "#FB9A99")) +
@@ -53,7 +54,11 @@ ggplot(maketab_P, aes(x = predicted_defluor, fill = proteins)) +
   ylab("Density") +
   xlab("Defluorination probability") +
   theme(legend.title = element_blank())
+p2
 dev.off()
 
 write_csv(summtab, "output/scores_for_5_predicted_HADs.csv")
+pdf("output/revision_figures_final/HAD_validation_figures_stacked.pdf", width = 4, height = 5)
+p1 / p2
+dev.off()
 

@@ -1,7 +1,6 @@
 # Read in the packages
 pacman::p_load("tidyverse", "readxl", "ggpubr", "diptest")
 
-getwd()
 # Experiment1
 temp1 <- read_excel("data/Experiment1/template_linearized.xlsx", col_names = F) %>%
   dplyr::select(-31) %>%
@@ -24,7 +23,7 @@ exp1 <- read_excel('data/Experiment1/20240427_rep3_4_linearized_fluoride_data.xl
 
 exp1dat <- data.frame(activity = exp1) %>%
   bind_cols(label = temp1) %>%
-  mutate(exp = "Exp1") %>%
+  mutate(exp = "Experiment 1") %>%
   arrange(desc(activity)) %>%
   dplyr::filter(label!= "WT")
 
@@ -69,12 +68,13 @@ raw_wide <-  bind_cols(label = temp2,
                        rep3 = as.numeric(rep3)) 
 
 rawsum <- rowMeans(raw_wide[, 2:4]) 
-rawdf_diluted <- data.frame(label = temp2, exp = "Exp2", mean1 = rawsum) %>%
+rawdf_diluted <- data.frame(label = temp2, exp = "Experiment 2", mean1 = rawsum) %>%
   dplyr::mutate(activity = (mean1 - min(mean1, na.rm=T))/(max(mean1,na.rm=T) - min(mean1,na.rm=T))) %>%
   na.omit()
 combdf <- rawdf_diluted %>%
   bind_rows(exp1dat) %>%
   dplyr::mutate(position = as.numeric(str_extract(label, "\\-?\\d+\\.?\\d*")))
+
 ##### EXPERIMENT 2 UNDILUTED ######
 # Read in the protein normalized data
 rep1 <- read_excel("data/Experiment2/Fluoride Library screening undiluted.xlsx",
@@ -122,12 +122,14 @@ combdf2 <- rawdf_undiluted %>%
   dplyr::mutate(position = as.numeric(str_extract(label, "\\-?\\d+\\.?\\d*"))) %>%
   dplyr::filter(!exp %in% ("Exp2 undiluted")) 
 
-
 pdf("output/revision_figures_final/experiment1_2_comparison.pdf", width =5, height =6)
-ggplot(combdf2) +
+ggplot(combdf) +
   geom_bar(aes(x = position, y = activity, color = exp, fill = exp), stat = "identity") + 
   facet_grid(exp~.) +
   theme_pubr() +
   scale_color_manual(values = c("orchid4", "forestgreen", "orange3")) +
-  scale_fill_manual(values = c("orchid4", "forestgreen", "orange3"))
+  scale_fill_manual(values = c("orchid4", "forestgreen", "orange3")) +
+  xlab("Amino acid position in the P6 alanine scanning library") +
+  ylab("Defluorination activity (min-max normalized)") +
+  theme(legend.title = element_blank())
 dev.off()
