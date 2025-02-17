@@ -1,6 +1,6 @@
 Table SX. Genome neighborhood context of 55 bioinformatically-identified HADs including 9 which were experimentally verified in this study *Average occurrence of the PFAM within 15 the genome neighborhood corresponding to 7 genes on each side of the central HAD gene query,,,,
-ID,PFAM,Number of hits (for 55 HAD neighborhoods),Description,Frequency*
-1,no pfam assigned,169,NA/hypothetical proteins,1.352
+ID,PFAM,Number of hits (summed across 55 HAD neighborhoods),Description,Frequency*
+1,no pfam assigned,169,hypothetical protein,1.352
 2,PF13419,49,Haloacid dehalogenase-like hydrolase,0.392
 3,PF00005,14,ABC transporter,0.112
 4,PF12833,11,Helix-turn-helix domain,0.088
