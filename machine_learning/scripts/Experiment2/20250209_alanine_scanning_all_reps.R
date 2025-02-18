@@ -3,7 +3,7 @@ pacman::p_load("tidyverse", "readxl", "ggpubr", "ggridges")
 
 # Read in the protein normalized data
 rep1 <- read_excel("data/Fluoride_concentrations+normalized_activities.xlsx",
-                   range = c("C110:N132"), sheet = "Data normalized Defluorination") %>%
+                   range = c("C4:N25"), sheet = "Data normalized Defluorination") %>%
   as.matrix(byrow = T) %>%
   t() %>%
   c() %>%
@@ -11,7 +11,7 @@ rep1 <- read_excel("data/Fluoride_concentrations+normalized_activities.xlsx",
 rep1
 
 rep2 <- read_excel("data/Fluoride_concentrations+normalized_activities.xlsx",
-                   range = c("P110:AA132"), sheet = "Data normalized Defluorination") %>%
+                   range = c("P4:AA25"), sheet = "Data normalized Defluorination") %>%
   as.matrix(byrow = T) %>%
   t() %>%
   c() %>%
@@ -19,7 +19,7 @@ rep2 <- read_excel("data/Fluoride_concentrations+normalized_activities.xlsx",
 rep2
 
 rep3 <- read_excel("data/Fluoride_concentrations+normalized_activities.xlsx",
-                   range = c("AC110:AN132"), sheet = "Data normalized Defluorination") %>%
+                   range = c("AC4:AN25"), sheet = "Data normalized Defluorination") %>%
   as.matrix(byrow = T) %>%
   t() %>%
   c() %>%
@@ -48,6 +48,10 @@ wt <- mean(rawdf$value[rawdf$label == "WT"])
 attr(rawdf, "na.action") <- NULL
 attr(rawdf, "class") <- NULL
 attr(rawdf, "row.names") <- NULL
+
+ggplot(specdf) +
+  geom_density(aes(value)) +
+  theme_pubr()
 
 specdf <- data.frame(rawdf) %>%
   dplyr::mutate(delta = wt-value) %>%
@@ -99,7 +103,7 @@ ggplot(specdf, aes(x = as.factor(chimera_segment), y = delta)) +
                                c(6,3),
                                c(6,2),
                                c(6,1)),
-            y_position = 900, tip_length = 0, vjust = 0.7,
+            tip_length = 0, vjust = 0.7,
             step_increase = 0.05,  # To stagger the bars
             textsize = 1,
             map_signif_level = T)
