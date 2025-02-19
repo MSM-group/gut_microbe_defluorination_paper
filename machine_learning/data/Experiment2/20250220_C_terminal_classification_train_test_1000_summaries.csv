@@ -1,7 +1,0 @@
-t.summary.traindf.score...Var1,t.summary.traindf.score...Var2,t.summary.traindf.score...Freq,t.summary.testdf.score...Var1,t.summary.testdf.score...Var2,t.summary.testdf.score...Freq
-A,Min.,0.8333333333333334,A,Min.,0.7727272727272727
-A,1st Qu.,0.9047619047619048,A,1st Qu.,0.9090909090909091
-A,Median,0.9166666666666666,A,Median,0.9545454545454546
-A,Mean,0.9154761904761904,A,Mean,0.9314545454545454
-A,3rd Qu.,0.9285714285714286,A,3rd Qu.,0.9545454545454546
-A,Max.,0.9880952380952381,A,Max.,1

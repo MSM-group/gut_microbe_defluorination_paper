@@ -4,46 +4,26 @@ pacman::p_load("tidyverse", "DECIPHER", "Biostrings", "caret",
                "rsample", "randomForest", "readxl", "ggpubr")
 
 # Read in the protein normalized data
-dat <- read_excel("data/Fluoride_concentrations+normalized_activities.xlsx",
-                  range = c("C135:N156"), sheet = "Data normalized Defluorination") %>%
-  as.matrix(byrow = T) %>%
-  t() %>%
-  c() %>%
-  na.omit()
-dat
-attr(dat, "na.action") <- NULL
-attr(dat, "class") <- NULL
-
-# Read in the template
-temp1 <- read_excel("data/template_raw.xlsx", col_names = F) %>%
-  janitor::clean_names() %>%
-  as.matrix(byrow = T) %>%
-  as.vector() %>%
-  na.omit() 
-attr(temp1, "na.action") <- NULL
-attr(temp1, "class") <- NULL
-temp1
-specdf$activity
-
-specdf <- bind_cols(label = temp1, activity = dat) %>%
+dat <- read_csv("data/Experiment2/20250220_rep1_2_3_linearized_fluoride_data.csv")
+specdf <- dat %>%
   dplyr::filter(!label %in% c("WT", "P20", "P21", "P22", "P23", "P24")) %>%
   dplyr::mutate(aa = substr(label, 2, 2)) %>%
   arrange(desc(activity)) %>%
   dplyr::filter(aa != "O") %>%
   dplyr::mutate(activity = log10(activity)) %>%
   dplyr::mutate(activity = (activity - min(activity, na.rm=T))/(max(activity,na.rm=T) - min(activity,na.rm=T))) %>%
-  dplyr::mutate(truth = case_when(activity >= 1.0 ~ "defluor",   #2.322878 is the activity cut-off
-                                  activity <= 0.3 ~ "nondefluor"))  %>%
+  dplyr::mutate(truth = case_when(activity >= 0.3 ~ "defluor",   #2.322878 is the activity cut-off
+                                  activity <= 0.1 ~ "nondefluor"))  %>%
   dplyr::filter(complete.cases(.)) %>%
   dplyr::mutate(fd_uname = paste0("WP_178618037_1_", label)) %>%
   dplyr::mutate(fd_uname = gsub("_g", "_", fd_uname))
 
-
 # Read in sequences
 m8037 <- read_excel("data/Batch353c_Robinson_m8037_T7Express.xlsx") %>%
   dplyr::left_join(., specdf, by = c("fd_uname")) %>%
-  dplyr::mutate(truth = case_when(activity >= 2.322878 ~ "defluor",   #2.322878 is the activity cut-off
-                                  activity <= 2.322878 ~ "nondefluor"))  
+  dplyr::mutate(truth = case_when(activity >= 0.3 ~ "defluor",   
+                                  activity <= 0.1 ~ "nondefluor"))  
+
 m9078 <- read_excel("data/Batch353c_Robinson_m9078_T7Express.xlsx") %>%
   dplyr::mutate(truth = "nondefluor")
 
