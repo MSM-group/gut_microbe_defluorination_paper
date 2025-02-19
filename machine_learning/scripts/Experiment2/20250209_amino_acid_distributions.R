@@ -3,7 +3,8 @@ pacman::p_load("tidyverse", "readxl", "ggpubr", "ranger",
                "doParallel", "permute", "coin")
 
 # Read in the dataset
-dat <- read_csv("data/20250209_full_set_452_training_seqs.csv")
+dat <- read_csv("data/20250220_defluorinases_entire_alignment_for_classification.csv") %>%
+  data.frame()
 nrow(dat)
 rownames(dat) <- dat$nams
 table(duplicated(dat$nams))
@@ -16,10 +17,9 @@ registerDoParallel(cores = parallel::detectCores())
 train_and_extract_features <- function(seed) {
   set.seed(seed)
   # Split into test and training data - random option
-  dat_split <- rsample::initial_split(dat[1:448,], prop = 0.8, strata = "truth")
+  dat_split <- rsample::initial_split(dat, prop = 0.8, strata = "truth")
   dat_train <- rsample::training(dat_split)
-  dat_test0 <- rsample::testing(dat_split)
-  dat_test <- bind_rows(dat_test0, dat[448:452,])
+  dat_test <- bind_rows(dat_test)
   
   # Independent variables
   x_train <- data.frame(dat_train[,!colnames(dat_train) %in% c("nams", "truth")])
@@ -192,7 +192,3 @@ print(data)
 significant_aa <- data[data$p_value < 0.05, ]
 print("Significantly different amino acids:")
 print(significant_aa)
-
-
-## Make a box plot to show there is no significant difference between the amino acids which were important 
-# and their overall proportion within the protein
