@@ -4,8 +4,7 @@ pacman::p_load("tidyverse", "DECIPHER", "Biostrings", "ggpmisc", "caret", "gplot
                "rsample", "randomForest", "readxl", "ggpubr", "RColorBrewer")
 
 # Read in the template
-temp1 <- read_excel("data/machine_learning/template_linearized.xlsx", col_names = F) %>%
-  dplyr::select(-31) %>%
+temp1 <- read_excel("data/Experiment1/template_exp1.xlsx", col_names = F) %>%
   janitor::clean_names() %>%
   as.matrix(bycol = T) %>%
   t %>%
@@ -13,30 +12,23 @@ temp1 <- read_excel("data/machine_learning/template_linearized.xlsx", col_names 
 temp1 <- temp1[!is.na(temp1)]
 
 # Read in the CSV
-res3 <- read_excel('data/machine_learning/20240427_rep3_4_linearized_fluoride_data.xlsx', 
-                  col_names = F, sheet = "rep3_linearized_fluoride") %>%
+res3 <- read_excel('data/Experiment1/20240427_rep1_2_linearized_fluoride_data.xlsx', 
+                  col_names = F, sheet = "rep1_linearized_fluoride") %>%
   janitor::clean_names() %>%
   as.matrix(bycol = T) %>%
   t %>%
   as.vector() 
 res3 <- res3[!is.na(res3)]
 
-res4 <- read_excel('data/machine_learning/20240427_rep3_4_linearized_fluoride_data.xlsx', 
-                   col_names = F, sheet = "rep4_linearized_fluoride") %>%
+res4 <- read_excel('data/Experiment1/20240427_rep1_2_linearized_fluoride_data.xlsx', 
+                   col_names = F, sheet = "rep2_linearized_fluoride") %>%
   janitor::clean_names() %>%
   as.matrix(bycol = T) %>%
   t %>%
   as.vector() 
 res4 <- as.numeric(res4[!is.na(res4)])
 
-res5 <-  read_excel('data/machine_learning/20240427_rep3_4_linearized_fluoride_data.xlsx', 
-                    col_names = F, sheet = "average_linearized_fluoride") %>%
-  janitor::clean_names() %>%
-  as.matrix(bycol = T) %>%
-  t %>%
-  as.vector() 
 
-res5 <- as.numeric(res4[!is.na(res5)])
 
 # Delta calculation relative to WT
 wt3 <- res3[temp1 == "WT"]
@@ -46,12 +38,12 @@ wt5 <- as.numeric(res5[temp1 == "WT"])
 # Delta
 delta3 <- wt3 - res3 # delta between WT -> Ala_mut
 delta4 <- wt4 - res4
-delta5 <- wt5 - res5
+
 
 delta <- c(delta3, delta4)
 label <- c(temp1, temp1)
-delta <- delta5
-label <- temp1
+
+
 # Delta
 dat <- bind_cols(label = label, 
                  delta = delta) %>%
@@ -70,11 +62,6 @@ dat <- bind_cols(label = label,
                                             position_index %in% 197:238 ~ 6,
                                             TRUE ~ NA))
 
-dat$chimera_segment
-whichkeep <- dat$delta[dat$chimera_segment == "6"]
-whichkeep <- whichkeep[!is.na(whichkeep)]
-length(whichkeep[whichkeep >= 0]) / length(whichkeep)
-
 p1 <-  ggplot(dat, aes(x = position_index, y = delta)) +
   geom_point(aes(color = as.factor(chimera_segment), 
                  fill = as.factor(chimera_segment),
@@ -90,6 +77,6 @@ p1 <-  ggplot(dat, aes(x = position_index, y = delta)) +
 p1  
 
 
-ggsave(p1, file = "output/dot_plot.png", height = 4, width = 3)
+ggsave(p1, file = "output/figures/Fig4D_dot_plot.png", height = 4, width = 3)
 
 
