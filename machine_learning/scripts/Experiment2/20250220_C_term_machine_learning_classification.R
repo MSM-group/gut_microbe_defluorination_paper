@@ -4,45 +4,31 @@ pacman::p_load("tidyverse", "DECIPHER", "Biostrings", "caret",
                "rsample", "randomForest", "readxl", "ggpubr")
 
 # Read in the protein normalized data
-dat <- read_excel("data/Fluoride_concentrations+normalized_activities.xlsx",
-                  range = c("C135:N156"), sheet = "Data normalized Defluorination") %>%
-  as.matrix(byrow = T) %>%
-  t() %>%
-  c() %>%
-  na.omit()
-dat
-attr(dat, "na.action") <- NULL
-attr(dat, "class") <- NULL
-
-# Read in the template
-temp1 <- read_excel("data/template_raw.xlsx", col_names = F) %>%
-  janitor::clean_names() %>%
-  as.matrix(byrow = T) %>%
-  as.vector() %>%
-  na.omit() 
-attr(temp1, "na.action") <- NULL
-attr(temp1, "class") <- NULL
-temp1
-
-specdf <- bind_cols(label = temp1, activity = dat) %>%
+dat <- read_csv("data/Experiment2/20250220_rep1_2_3_linearized_fluoride_data.csv")
+specdf <- dat %>%
   dplyr::filter(!label %in% c("WT", "P20", "P21", "P22", "P23", "P24")) %>%
   dplyr::mutate(aa = substr(label, 2, 2)) %>%
   arrange(desc(activity)) %>%
   dplyr::filter(aa != "O") %>%
-  dplyr::mutate(truth = case_when(activity >= 2.322878 ~ "defluor",   #2.322878 is the activity cut-off
-                                  activity <= 2.322878 ~ "nondefluor"))  %>%
+  dplyr::mutate(activity = (activity - min(activity, na.rm=T))/(max(activity,na.rm=T) - min(activity,na.rm=T))) %>%
+  dplyr::mutate(truth = case_when(activity >= 0.3 ~ "defluor",  
+                                  activity <= 0.1 ~ "nondefluor"))  %>%
   dplyr::filter(complete.cases(.)) %>%
   dplyr::mutate(fd_uname = paste0("WP_178618037_1_", label)) %>%
   dplyr::mutate(fd_uname = gsub("_g", "_", fd_uname))
+table(specdf$truth)
+summary(specdf$activity)
+hist(specdf$activity,breaks = 20)
 
 # Read in sequences
 m8037 <- read_excel("data/Batch353c_Robinson_m8037_T7Express.xlsx") %>%
   dplyr::left_join(., specdf, by = c("fd_uname")) %>%
-  dplyr::mutate(activity = log10(activity)) %>%
-  dplyr::mutate(truth = case_when(activity >= 2.322878 ~ "defluor",   #2.322878 is the activity cut-off
-                                  activity <= 2.322878 ~ "nondefluor"))  
+  dplyr::mutate(truth = case_when(activity >= 0.3 ~ "defluor",   
+                                  activity <= 0.1 ~ "nondefluor"))  
+
 m9078 <- read_excel("data/Batch353c_Robinson_m9078_T7Express.xlsx") %>%
   dplyr::mutate(truth = "nondefluor")
+
 comball <- m8037 %>%
   bind_rows(m9078) %>%
   janitor::clean_names() %>%
@@ -60,7 +46,7 @@ pos <- readAAStringSet("data/pos_defluorinases_deduplicated.fasta")
 neg <- readAAStringSet("data/neg_defluorinases_deduplicated.fasta")
 comb <- AlignSeqs(AAStringSet(c(pos, neg, mutlib)))
 BrowseSeqs(comb)
-writeXStringSet(comb, "data/mutlib_all_seqs_aligned.fasta")
+#writeXStringSet(comb, "data/mutlib_all_seqs_aligned.fasta")
 
 # Load alignment file
 seqs <- read.alignment("data/mutlib_all_seqs_aligned.fasta", format = "fasta") 
@@ -85,7 +71,7 @@ tri.pos2 <- words.pos("vepe",lb_rham) # ptl #mdvsnv
 end.pos2 <- words.pos("gv-", lb_rham)
 tri.pos2
 end.pos2
-nuc2<-lapply(seqs$seq,function(x) { substr(x,tri.pos2,end.pos2+1) })
+nuc2<-lapply(seqs$seq, function(x) { substr(x,tri.pos2,end.pos2+1) })
 nuc2
 nucr2<-unlist(nuc2)
 
@@ -94,32 +80,20 @@ nucr <- paste0(nucr1, nucr2)
 names(nucr) <- seqs$nam
 appendf <- data.frame(nams = names(nucr), motif = nucr)
 
-# Make a logo of the C-terminal motif 
-motif_seqs <- data.frame(toupper(substr(appendf$motif, 
-                                        start = 23,
-                                        stop = nchar(appendf$motif))))
-
-fig1 <- ggplot() + 
-  geom_logo(motif_seqs, method = "p", 
-            col_scheme = "auto") +
-  theme_logo() +
-  theme(axis.text.x = element_text(angle = 45))
-fig1
-
 # Merge with the defluorination data
 merg <- appendf %>%
   dplyr::mutate(motif = toupper(motif))
 nchar(merg$motif)
-not_all_na <- function(x) any(!is.na(x))
+
 merg_split <- merg %>%
-  tidyr::separate(motif, into = paste0("residue", c((tri.pos1-12):(end.pos1-11), (tri.pos2-11):(290-11))), sep = "") %>%
-  dplyr::select(where(not_all_na))
+  tidyr::separate(motif, into = paste0("residue", c((tri.pos1-12):(end.pos1-11), (tri.pos2-11):(290-11))), sep = "") 
 
 # Write data frame to file
 reg_df <- merg_split %>%
   dplyr::mutate(truth = c(rep("defluor", length(pos)), 
                           rep("nondefluor", length(neg)),
                           comball$truth[!is.na(comball$truth)]))
+
 # write_csv(reg_df, "data/Experiment2/20250220_defluorinases_C_term_for_classification.csv")
 
 # Remove columns that the machine learning model should not learn e.g., nams, truth

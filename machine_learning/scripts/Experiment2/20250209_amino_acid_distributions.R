@@ -3,12 +3,30 @@ pacman::p_load("tidyverse", "readxl", "ggpubr", "ranger",
                "doParallel", "permute", "coin")
 
 # Read in the dataset
-dat <- read_csv("data/20250220_defluorinases_entire_alignment_for_classification.csv") %>%
-  data.frame()
+reg_df <- read_csv('data/Experiment2/20250220_defluorinases_entire_alignment_for_classification.csv')
+truthdf <- data.frame(nams = reg_df$nams, 
+                      truth = reg_df$truth)
+
+rawdat <- reg_df %>%
+  select(-2, -truth) %>%
+  column_to_rownames("nams") %>% 
+  filter(!duplicated(.)) %>%
+  mutate(nams = rownames(.))
+
+rawdat <- rawdat %>%
+  left_join(., truthdf, by = c("nams"))
+
+# Remove variables with nonzero variance (should already be removed)
+nozdat <- caret::nearZeroVar(rawdat, saveMetrics = TRUE, 
+                             uniqueCut = 1)
+which_rem <- rownames(nozdat)[nozdat[,"nzv"] == TRUE] 
+length(which_rem) # cut none
+
+# Check for duplicates
+dat <- rawdat  %>%
+  select(-which_rem)
+dat <- dat[!duplicated(dat),] 
 nrow(dat)
-rownames(dat) <- dat$nams
-table(duplicated(dat$nams))
-table(dat$truth)
 
 # Register parallel backend
 registerDoParallel(cores = parallel::detectCores())
@@ -16,10 +34,11 @@ registerDoParallel(cores = parallel::detectCores())
 # Define the function to train the model and extract top features
 train_and_extract_features <- function(seed) {
   set.seed(seed)
+  
   # Split into test and training data - random option
   dat_split <- rsample::initial_split(dat, prop = 0.8, strata = "truth")
   dat_train <- rsample::training(dat_split)
-  dat_test <- bind_rows(dat_test)
+  dat_test <-rsample::testing(dat_split)
   
   # Independent variables
   x_train <- data.frame(dat_train[,!colnames(dat_train) %in% c("nams", "truth")])
@@ -78,7 +97,7 @@ train_and_extract_features <- function(seed) {
   preds_df <- bind_cols(nams = dat_test$nams, truth = y_test, 
                         predicted_defluor = rf_pred$predictions[,1],
                         predicted_nondefluor = rf_pred$predictions[,2])  
-  return(list(importance_df, preds_df))
+  return(list(importance_df))
 }
 
 # Set random seed 
@@ -91,19 +110,35 @@ combined_df_rf <- combined_df %>%
   dplyr::select(1:5) %>%
   dplyr::filter(!is.na(aa)) %>%
   dplyr::filter(aa!= ".") %>%
-  dplyr::filter(rank %in% c(1:20))
-# combined_df_stats <- combined_df_rf %>%
-#   group_by(feature) %>%
-#   dplyr::summarise(mean = mean(importance),
-#                    sd = sd(importance))
+  dplyr::filter(rank %in% c(1:20)) %>%
+  dplyr::mutate(position = as.numeric(str_extract(feature, "\\-?\\d+\\.?\\d*")))
 
 
-# Write the prediction results to file
-combined_preds <- combined_df %>%
-  dplyr::select(1, 6:9) %>%
-  dplyr::filter(!is.na(nams))
-combined_preds
-# write_csv(combined_preds, "output/20250209_1000_classification_predictions.csv")
+checksumms <- combined_df_rf %>%
+  group_by(iteration) %>%
+  dplyr::mutate(summs = sum(position))
+
+checksumms$iteration[which.max(checksumms$summs)] # 531 # 910
+combmax <- combined_df_rf %>%
+  dplyr::filter(iteration == 984) %>%
+  arrange(importance)
+combmax$feature <- gsub("residue", "motif", combmax$feature)
+
+combmax$feature <- factor(combmax$feature, levels = as.character(combmax$feature))
+
+pdf("output/revision_figures_final/Experiment2_importance_plot.pdf", height = 6, width = 6)
+ggplot(combmax) +
+  geom_bar(aes(x = feature, y = importance), stat = "identity") +
+  theme_pubr() +
+  #theme(text = element_text(color = "gray40")) +
+  coord_flip() +
+  xlab("") +
+  ylab("Importance")
+dev.off()
+
+write_csv(combined_df_rf, "output/20250220_1000_classification_predictions.csv")
+
+
 
 # Barplot of important AAs
 ggplot(combined_df_rf) +

@@ -84,14 +84,15 @@ write_csv(combdf, "output/20250211_testing_results.csv")
 # Look at performance 
 combined_df <- bind_rows(lapply(rf_models, `[[`, 4))
 
-
 # Combine the importance results into a single data frame
 importance_df_all <- data.frame(bind_rows(lapply(rf_models, `[[`, 1)))
 importance_df_summ <- importance_df_all %>%
   group_by(feature) %>%
   dplyr::summarise(mean_value = mean(importance),
                    sd_value = sd(importance))
-importance_df_summ
+
+importance_df_summ[which.max(importance_df_summ),]
+
 ggplot(data = importance_df_summ) +
   geom_bar(aes(x = feature, y = mean_value), position = "stack", stat = "identity") +
   theme_pubr() +

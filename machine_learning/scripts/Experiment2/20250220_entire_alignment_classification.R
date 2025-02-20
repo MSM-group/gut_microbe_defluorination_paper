@@ -10,13 +10,16 @@ specdf <- dat %>%
   dplyr::mutate(aa = substr(label, 2, 2)) %>%
   arrange(desc(activity)) %>%
   dplyr::filter(aa != "O") %>%
-  dplyr::mutate(activity = log10(activity)) %>%
   dplyr::mutate(activity = (activity - min(activity, na.rm=T))/(max(activity,na.rm=T) - min(activity,na.rm=T))) %>%
-  dplyr::mutate(truth = case_when(activity >= 0.3 ~ "defluor",   #2.322878 is the activity cut-off
+  dplyr::mutate(truth = case_when(activity >= 0.3 ~ "defluor",  
                                   activity <= 0.1 ~ "nondefluor"))  %>%
   dplyr::filter(complete.cases(.)) %>%
   dplyr::mutate(fd_uname = paste0("WP_178618037_1_", label)) %>%
   dplyr::mutate(fd_uname = gsub("_g", "_", fd_uname))
+table(specdf$truth)
+
+summary(specdf$activity)
+hist(specdf$activity,breaks = 20)
 
 # Read in sequences
 m8037 <- read_excel("data/Batch353c_Robinson_m8037_T7Express.xlsx") %>%
@@ -43,7 +46,7 @@ names(mutlib) <- comball$fd_uname
 pos <- readAAStringSet("data/pos_defluorinases_deduplicated.fasta")
 neg <- readAAStringSet("data/neg_defluorinases_deduplicated.fasta")
 comb <- AlignSeqs(AAStringSet(c(pos, neg, mutlib)))
-# writeXStringSet(comb, "data/Experiment2/mutlib_all_seqs_aligned.fasta")
+writeXStringSet(comb, "data/Experiment2/mutlib_all_seqs_aligned.fasta")
 
 # Load alignment file
 seqs <- read.alignment("data/Experiment2/mutlib_all_seqs_aligned.fasta", format = "fasta") 
@@ -75,7 +78,7 @@ reg_df <- merg_split %>%
   dplyr::mutate(truth = c(rep("defluor", length(pos)), 
                           rep("nondefluor", length(neg)),
                           comball$truth[!is.na(comball$truth)]))
-
+table(reg_df$truth)
 
 # Remove columns that the machine learning model should not see, e.g., nams, truth
 rawdat <- reg_df %>%
@@ -83,11 +86,13 @@ rawdat <- reg_df %>%
 
 colnames(rawdat) <- paste0(colnames(rawdat), "_", as.character(rawdat[1,]))
 colnames(rawdat)[grepl("truth", colnames(rawdat))] <- "truth"
-colnames(rawdat)[grepl("nams", colnames(rawdat))] <- "nams"
-# write_csv(rawdat, 'data/Experiment2/20250220_defluorinases_entire_alignment_for_classification.csv')
+colnames(rawdat)[grepl("nams", colnames(rawdat))] <- "nams" 
+#write_csv(rawdat, 'data/Experiment2/20250220_defluorinases_entire_alignment_for_classification.csv')
 
 # Remove variables with nonzero variance 
 rawdat <- read_csv("data/Experiment2/20250220_defluorinases_entire_alignment_for_classification.csv")
+table(rawdat$truth, rawdat$nams)
+
 nozdat <- caret::nearZeroVar(rawdat, saveMetrics = TRUE, uniqueCut = 1)
 which_rem <- rownames(nozdat)[nozdat[,"nzv"] == TRUE] 
 length(which_rem) # cut 42
@@ -135,7 +140,7 @@ mtrys # number of variables available for splitting at each tree node
 rf_grid <- expand.grid(mtry = mtrys,
                        splitrule = c("gini", "extratrees"),
                        min.node.size = 1)
-
+rf$bestTune
 # Train a machine learning model
 rf <- train(
   x = df_train,
@@ -159,7 +164,7 @@ rf_imp <- varImp(rf, scale = FALSE,
                  surrogates = FALSE, 
                  competes = FALSE)
 rf_imp
-rf_imp
+
 
 rf1 <- ggplot(rf_imp, top = 20) + 
   xlab("") +

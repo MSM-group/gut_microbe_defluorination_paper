@@ -114,7 +114,7 @@ alldf <- traindf %>%
 head(alldf)
 
 mean_F1_vec <- sapply(1:length(rf_models), function(x) {  rf_models[[x]]$confmat$byClass[['F1']] }) 
-mean_F1_vec
+rf_models[[5]]$confmat$byClass[['F1']]
 
 mean_oob_vec <- sapply(1:length(rf_models), function(x) {  rf_models[[x]][['oob']] }) 
 mean_F1_vec[mean_F1_vec == "NaN"] <- NA
