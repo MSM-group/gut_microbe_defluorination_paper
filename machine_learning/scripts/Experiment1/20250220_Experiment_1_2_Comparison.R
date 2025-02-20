@@ -46,23 +46,6 @@ exp1dat <- exp1_wide %>%
     mean_activity1 = mean(c_across(activity1:activity2), na.rm =T),
     sd_activity1 = sd(c_across(activity1:activity2), na.rm =T))
 
-#### EXPERIMENT 2 #####
-# Averages to check
-# Read in the protein normalized data
-dat <- read_excel("data/Experiment2/Fluoride_concentrations+normalized_activities.xlsx",
-                  range = c("C135:N156"), sheet = "Data normalized Defluorination") %>%
-  as.matrix(byrow = T) %>%
-  t() %>%
-  c() %>%
-  na.omit()
-temp2 <- read_excel("data/Experiment2/template_exp2.xlsx", col_names = F) %>%
-  janitor::clean_names() %>%
-  as.matrix(byrow = T) %>%
-  as.vector() 
-temp2 <- temp2[1:242]
-checkdata <- bind_cols(dat, temp2)
-attr(dat, "na.action") <- NULL
-attr(dat, "class") <- NULL
 
 #### EXPERIMENT 2 ######
 # Read in the individual replicates
@@ -127,9 +110,8 @@ meandf <- combdf %>%
 
 exp2_data_final <- meandf %>%
   dplyr::select(label, activity = Experiment2)
-write_csv(exp2_data_final, "data/Experiment2/20250220_rep1_2_3_linearized_fluoride_data.csv")
 
-# write_csv(meandf, "output/revision_figures_final/alanine_scanning_activity_diluted_data.csv")
+# write_csv(meandf, "output/tables/TableS18_exp1_exp2_activity_data.csv")
 
 combdf2 <- meandf %>%
   dplyr::select(-contains("sd")) %>%
@@ -137,7 +119,7 @@ combdf2 <- meandf %>%
   dplyr::mutate(Position = as.numeric(str_extract(label, "\\-?\\d+\\.?\\d*")))
 colnames(combdf2) <- c("Label", "Experiment", "Activity", "Position")
 
-pdf("output/revision_figures_final/experiment1_2_comparison.pdf", width =5, height =6)
+pdf("output/figures/FigS30_experiment1_2_comparison.pdf", width =5, height =6)
 ggplot(combdf2) +
   geom_bar(aes(x =Position, y = Activity, color = Experiment, fill = Experiment), stat = "identity") + 
   facet_grid(Experiment~.) +

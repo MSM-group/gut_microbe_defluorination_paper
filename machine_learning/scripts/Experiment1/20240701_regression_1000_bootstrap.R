@@ -3,15 +3,8 @@ pacman::p_load("tidyverse", "DECIPHER", "Biostrings", "skimr", "caret", "colorsp
                "cowplot", "tidymodels", "ranger", "tree", "rsample", 
                "randomForest", "readxl", "ggpubr", "RColorBrewer")
 
-# Read in the random forest model from cross-validation
-rf_20240701 <- readRDS("data/machine_learning/20240701_regression_random_forest.rds")
-rf_20240701$bestTune$mtry # 7
-rf_20240701$bestTune$splitrule # extratrees
-rf_20240701$bestTune$min.node.size # 1
-
-# Read in the template
-temp1 <- read_excel("data/machine_learning/template_linearized.xlsx", col_names = F) %>%
-  dplyr::select(-31) %>%
+# Template
+temp1 <- read_excel("data/Experiment1/template_exp1.xlsx", col_names = F) %>%
   janitor::clean_names() %>%
   as.matrix(bycol = T) %>%
   t %>%
@@ -19,13 +12,13 @@ temp1 <- read_excel("data/machine_learning/template_linearized.xlsx", col_names 
 temp1 <- temp1[!is.na(temp1)]
 
 # Read in the CSV
-res <- read_excel('data/machine_learning/20240427_rep3_4_linearized_fluoride_data.xlsx', 
-                  col_names = F, sheet = "average_linearized_fluoride") %>%
+res <-  read_excel('data/Experiment1/20240427_rep1_2_linearized_fluoride_data.xlsx', 
+                   col_names = F, sheet = "average_linearized_fluoride") %>%
   janitor::clean_names() %>%
   as.matrix(bycol = T) %>%
   t %>%
   as.vector() 
-res <- res[!is.na(res)]
+res <- as.numeric(res[!is.na(res)])
 
 # Pair
 dat <- bind_cols(label = temp1, activity = res) %>%
@@ -51,7 +44,6 @@ feat_df <- dat %>%
   dplyr::mutate(position = as.numeric(gsub('[[:alpha:]]', "", substr(label, 3, 5)))) %>%
   dplyr::filter(!is.na(position))
 dat <- feat_df
-write_csv(dat, "data/machine_learning/20240701_regression_data.csv")
 
 # Try predicting the activity of 20%
 set.seed(20240711)
@@ -134,23 +126,11 @@ testsumm <- data.frame(tibble(t(summary(testdf$score))), stringsAsFactors = F)
 testsumm
 
 allsumm <- data.frame(c(trainsumm,testsumm)) 
-write_csv(allsumm, "data/machine_learning/regression_train_test_1000_summaries.csv")
 
 alldf <- traindf %>%
   bind_rows(testdf)
 head(alldf)
 alldf$split <- as.factor(alldf$split)
-
-pdf("data/machine_learning/1000_regression_training_testing_split_hist.pdf", width = 7, height = 4)
-p3 <- ggplot(alldf, aes(x= score, fill = split)) +
-  geom_histogram(alpha = 0.5,
-                 binwidth = 0.005, position = 'identity') +
-  theme_pubr(base_size = 12) +
-  xlab("Root-mean square error") +
-  ylab("Count") +
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 10))
-p3
-dev.off()
 
 dat_df <- tibble(mean_training_vec) %>%
   bind_cols(tibble(mean_testing_vec)) 

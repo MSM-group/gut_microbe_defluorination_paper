@@ -3,29 +3,30 @@ pacman::p_load("tidyverse", "DECIPHER", "Biostrings", "caret",
                 "tidymodels", "ranger", "tree", "seqinr",
                "rsample", "randomForest", "readxl", "ggpubr")
 
-# Read in the data
-dat <- read_excel('data/Experiment1/20240427_rep3_4_linearized_fluoride_data.xlsx', 
-                          col_names = F, sheet = "average_linearized_fluoride") %>%
-  janitor::clean_names() %>%
-  as.matrix(bycol = T) %>%
-  t %>%
-  as.vector() 
 
 # Read in the template
-temp1 <- read_excel("data/Experiment1/template_linearized.xlsx", col_names = F) %>%
-  dplyr::select(-31) %>%
+temp1 <- read_excel("data/Experiment1/template_exp1.xlsx", col_names = F) %>%
   janitor::clean_names() %>%
   as.matrix(bycol = T) %>%
   t %>%
   as.vector() 
 temp1 <- temp1[!is.na(temp1)]
 
+# Read in the CSV
+dat <-  read_excel('data/Experiment1/20240427_rep1_2_linearized_fluoride_data.xlsx', 
+                   col_names = F, sheet = "average_linearized_fluoride") %>%
+  janitor::clean_names() %>%
+  as.matrix(bycol = T) %>%
+  t %>%
+  as.vector() 
+dat <- as.numeric(dat[!is.na(dat)])
+
 specdf <- bind_cols(label = temp1, activity = dat) %>%
   dplyr::mutate(aa = substr(label, 2, 2)) %>%
   arrange(desc(activity)) %>%
   dplyr::filter(aa != "O") %>%
-  dplyr::mutate(truth = case_when(activity >= 1.0 ~ "defluor", 
-                                  activity <= 0.3 ~ "nondefluor"))  %>%
+  dplyr::mutate(truth = case_when(activity >= 0.3 ~ "defluor", 
+                                  activity <= 0.1 ~ "nondefluor"))  %>%
   dplyr::filter(complete.cases(.)) %>%
   dplyr::mutate(fd_uname = paste0("WP_178618037_1_", label))
 
@@ -42,7 +43,7 @@ comball <- m8037 %>%
   dplyr::mutate(nuc = as.character(toupper(dna_sequence))) %>%
   dplyr::mutate(protein = microseq::translate(nuc)) %>%
   dplyr::filter(!is.na(truth))
-table(specdf$aa)
+
 dat_list <- as.list(specdf$aa)
 names(dat_list) <- specdf$label
 mutlib <- AAStringSet(x = comball$protein)
@@ -92,7 +93,6 @@ rawdat <- reg_df %>%
 colnames(rawdat) <- paste0(colnames(rawdat), "_", as.character(rawdat[1,]))
 colnames(rawdat)[grepl("truth", colnames(rawdat))] <- "truth"
 colnames(rawdat)[grepl("nams", colnames(rawdat))] <- "nams"
-write_csv(rawdat, 'data/20250117_defluorinases_entire_alignment_for_classification.csv')
 
 # Remove variables with nonzero variance 
 nozdat <- caret::nearZeroVar(rawdat, saveMetrics = TRUE, uniqueCut = 1)
@@ -157,7 +157,6 @@ rf <- train(
 # Training set accuracy
 getTrainPerf(rf) # Training set accuracy 95% !
 rf$finalModel$prediction.error # out-of-bag error 5%
-saveRDS(rf, "data/20250217_classification_random_forest.rds")
 
 # Plot of variable importance
 rf_imp <- varImp(rf, scale = FALSE, 
@@ -166,25 +165,11 @@ rf_imp <- varImp(rf, scale = FALSE,
 rf_imp
 rf_imp
 
-pdf("data/importance_plot_full_length_classification_top20.pdf", width = 5, height = 3)
 rf1 <- ggplot(rf_imp, top = 20) + 
   xlab("") +
   theme_classic()
 rf1
-dev.off()
 
-table(as.numeric(gsub("residue", "", word(rownames(rf_imp$importance), sep = "_", 1))) > 196)
-80/(154 + 80) # 34%
-table(as.numeric(gsub("residue", "", word(rownames(rf_imp$importance), sep = "_", 1))) > 225) # PTLY
-55/(154 + 80) # 24%
-rf_imp
-ggsave(rf1, filename = "data/importance_plot_full_length_classification_top20.png", width = 6, height = 4)
-
-rf2 <- ggplot(rf_imp, top = 20) + 
-  xlab("") +
-  theme_classic() 
-rf2
-ggsave(rf2, filename = "data/importance_plot_full_length_classification_top20.png", width = 3.5, height =  2)
 
 rf_roc_train <- pROC::roc(response = ifelse(rf$pred$obs == "nondefluor", 0, 1),
                           predictor = ifelse(rf$pred$pred == "nondefluor", 0, 1),
