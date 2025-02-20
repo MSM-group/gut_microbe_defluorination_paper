@@ -91,11 +91,11 @@ for(i in 1:1000) {
 mean_training_vec <- unlist(sapply(1:length(rf_models), function(x) { rf_models[[x]]$train_rmse })) 
 traindf <- tibble(mean_training_vec)
 traindf
-write_tsv(traindf,"data/machine_learning/20240701_regression_mean_training_accuracy_1000_test_train_splits.txt")
+
 
 mean_testing_vec <- unlist(sapply(1:length(rf_models), function(x) { rf_models[[x]]$test_rmse}))
 testdf <- tibble(mean_testing_vec)
-write_tsv(testdf,"data/machine_learning/20240701_regression_mean_testing_accuracy_1000_test_train_splits.txt")
+
 
 p1 <- ggplot(traindf) +
   geom_histogram(aes(x = mean_training_vec, y = ..density..), alpha = 0.7,

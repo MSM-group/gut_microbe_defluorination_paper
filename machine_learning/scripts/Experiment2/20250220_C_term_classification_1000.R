@@ -114,24 +114,13 @@ alldf <- traindf %>%
   bind_rows(testdf)
 head(alldf)
 
-mean_F1_vec <- sapply(1:length(rf_models), function(x) {  rf_models[[x]]$confmat$byClass[['F1']] }) 
-mean_F1_vec
-
-mean_oob_vec <- sapply(1:length(rf_models), function(x) {  rf_models[[x]][['oob']] }) 
-mean(mean_oob_vec)
-
-mean_F1_vec[mean_F1_vec == "NaN"] <- NA
-
 dat_df <- tibble(mean_training_vec) %>%
-  bind_cols(tibble(mean_testing_vec)) %>%
-  bind_cols(tibble(mean_oob_vec))
+  bind_cols(tibble(mean_testing_vec)) 
 
 dat_df
-write_csv(dat_df, "data/Machine_learning/20250220_C_terminal_classification_accuracy_1000_training_test_combined.csv")
 colMeans(dat_df, na.rm = T)
 
 sd_df <- dat_df %>%
-  #dplyr::filter(!is.na(mean_F1_vec)) %>%
   dplyr::summarise_each(sd)
 sd_df
 

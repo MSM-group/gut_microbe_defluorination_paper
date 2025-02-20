@@ -44,15 +44,15 @@ mutlib <- AAStringSet(x = comball$protein)
 names(mutlib) <- comball$fd_uname
 
 # Align all sequences
-pos <- readAAStringSet("data/Machine_learning/pos_defluorinases_deduplicated.fasta")
-neg <- readAAStringSet("data/Machine_learning/neg_defluorinases_deduplicated.fasta")
+pos <- readAAStringSet("data/pos_defluorinases_deduplicated.fasta")
+neg <- readAAStringSet("data/neg_defluorinases_deduplicated.fasta")
 comb <- AlignSeqs(AAStringSet(c(pos, neg, mutlib)))
 names(comb) <- c(names(pos), names(neg), names(mutlib))
 # BrowseSeqs(comb)
-# writeXStringSet(comb, "data/Machine_learning/C_term_all_seqs_aligned.fasta")
+# writeXStringSet(comb, "data/mutlib_all_seqs_aligned.fasta") # optional write to file
 
 # Load alignment file
-seqs <- read.alignment("data/Machine_learning/mutlib_all_seqs_aligned.fasta", format = "fasta") 
+# seqs <- read.alignment("data/mutlib_all_seqs_aligned.fasta", format = "fasta") 
 lb_rham <- seqs$seq[[1]] 
 
 # Identify the start and end of the C-terminal region
@@ -82,8 +82,7 @@ nucr <- paste0(nucr1, nucr2)
 names(nucr) <- seqs$nam
 appendf <- data.frame(nams = names(nucr), motif = nucr)
 
-# 206 - 221
-# EYGAVNNHHEVPEAKY
+
 # Make a logo of the C-terminal motif 
 motif_seqs <- data.frame(toupper(substr(appendf$motif, 
                                 start = 23,
@@ -99,8 +98,6 @@ fig1
 fig1$scales$scales[[1]] <- scale_x_continuous(breaks = c(1:18), labels=as.character(c(274:(275+16))))
 fig1
 
-ggsave(fig1, file = "output/shortened_C_terminal_motif.png", width = 6, height = 3)
-
 # Merge with the defluorination data
 merg <- appendf %>%
   dplyr::mutate(motif = toupper(motif))
@@ -112,9 +109,6 @@ tri.pos2
 end.pos2
 merg_split <- merg %>%
   tidyr::separate(motif, into = paste0("residue", c((tri.pos1-12):(end.pos1-11), (tri.pos2-11):(290-11), "_", (292-11):(end.pos2-10))), sep = "")
-  #tidyr::separate(motif, into = paste0("residue", 245:(245 + width(nucr)[1])), sep = "") 
-  #tidyr::separate(motif, into = paste0("residue", 197:(197 + width(nucr)[1])), sep = "") 
-
 appendf <- data.frame(nams = names(nucr), motif = nucr)
 
 
@@ -122,7 +116,7 @@ appendf <- data.frame(nams = names(nucr), motif = nucr)
 reg_df <- merg_split %>%
   dplyr::mutate(truth = c(rep("defluor", length(pos)), rep("nondefluor", length(neg)),
                           comball$truth))
-write_csv(reg_df, "data/machine_learning/20240701_defluorinases_C_term_for_classification.csv")
+
 
 # Remove columns that the machine learning model should not learn e.g., nams, truth
 rawdat <- reg_df %>%
@@ -193,7 +187,6 @@ rf <- train(
 # Training set accuracy
 getTrainPerf(rf) # Training set accuracy 
 rf$finalModel$prediction.error # Out-of-bag error
-saveRDS(rf, "data/Machine_learning/20240701_C_term_classification_random_forest.rds")
 
 #Plot of variable importance
 rf_imp <- varImp(rf, scale = FALSE, 
@@ -201,12 +194,11 @@ rf_imp <- varImp(rf, scale = FALSE,
                  competes = FALSE)
 rf_imp
 
-pdf("data/Machine_learning/C_terminal_only_importance_plot_full_length_classification_top20.pdf", width = 5, height = 3)
 rf1 <- ggplot(rf_imp, top = 20) + 
   xlab("") +
   theme_classic()
 rf1
-dev.off()
+
 
 # Testing set
 rf_pred <- predict(rf, newdata = form_test)
@@ -231,13 +223,12 @@ rf_roc <- pROC::roc(response = ifelse(rf$pred$obs == "nondefluor", 0, 1),
                    predictor = ifelse(rf$pred$pred == "nondefluor", 0, 1),
                    ci = F)
 
-pdf("data/Machine_learning/C_term_only_auroc_curve_classification.pdf", width = 3, height = 3)
 plot(rf_roc, type = "s", 
      col = "#529DCF", xaxs = "i", yaxs="i",
      print.auc = TRUE, print.auc.x = 0.95 
      , print.auc.y = 0.8,
      xlim = c(1.1,-0.1), ylim = c( 0, 1.1))
-dev.off()
+
 
 
 
