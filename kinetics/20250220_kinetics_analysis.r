@@ -18,7 +18,8 @@ dat <- read_excel("kinetics/20250218_kinetic_raw_data.xlsx") %>%
         dplyr::slice(1:nrow(.)) %>%
         dplyr::mutate(timepoint_min = as.numeric(gsub("min", "", word(ident, sep = "_", 4)))) %>%
         dplyr::mutate(fluoride_mM = as.numeric(anion_fluoride_m_m)) %>%
-        dplyr::mutate(id_rep = word(ident, sep = "_", -1)) 
+        dplyr::mutate(id_rep = word(ident, sep = "_", -1)) %>%
+        dplyr::filter(!grepl("Kinetik_Protein3_50mM_120min|Kinetik_Protein3_20mM_120min", ident))
 
 # Plot the results for the different concentrations
 ggplot(dat) +
@@ -38,6 +39,7 @@ result <- dat %>%
   dplyr::select(-model)
 colnames(result)
 
+
 # Plot the results for the different concentrations
 ggplot(result)  +
   geom_point(aes(x = FAc_mM, y = slope, color = replicate)) +
@@ -48,7 +50,7 @@ mich <- result %>%
     mutate(v = slope/60) # mM per second
 
 # Plot the results for the different concentrations
-pdf("kinetics/kinetics_activity_per_conc_no_stdev.pdf", width = 5, height = 4)
+pdf("kinetics/rate_per_conc.pdf", width = 4, height = 3)
 ggplot(mich)  +
   geom_point(aes(x = FAc_mM, y = v, color = replicate)) +
   xlab("conc FAc (mM)") +
@@ -59,7 +61,7 @@ dev.off()
 trim_dat <- mich %>%
   dplyr::mutate(S = FAc_mM) %>% 
   dplyr::mutate(enzymes = "Protein3") %>%
-  select(v, S, enzymes)
+  dplyr::select(v, S, enzymes)
 
 # See Michaelis script
 source("kinetics/michaelis.r")
@@ -103,7 +105,7 @@ dtfv <- dtf %>%
   mutate(cat.effic = (kcat)/Km.M)
 # Standard error propagation when dividing two numbers with standard errors
 dtfv$cat.effic.std <- (dtfv$cat.effic) * sqrt((dtfv$kcat.std^2) + (dtfv$Km.M.std^2)) 
-
+dtfv
 
 write.table(dtfv, "kinetics/Protein3_table_normalized.tsv",
             sep = "\t", quote = F, row.names = F)
