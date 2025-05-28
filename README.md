@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15535726.svg)](https://doi.org/10.5281/zenodo.15535726)
 # gut_microbe_defluorination_paper
 GitHub repository with code, plots, and analyses associated with the manuscript:
 <br>
